@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NaziharDB - Interactive Query Results Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: #182234;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --border: #334155;
+      --tag-bg: #0369a1;
+      --success: #10b981;
+      --warning: #f59e0b;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    aside {
+      width: 320px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .brand {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.4);
+    }
+    .brand h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .search-box {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-box input {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .search-box input:focus {
+      border-color: var(--accent);
+    }
+    .query-list {
+      list-style: none;
+      overflow-y: auto;
+      flex: 1;
+      padding: 8px;
+    }
+    .query-list li {
+      padding: 10px 12px;
+      margin-bottom: 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+    .query-list li:hover {
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--text-main);
+    }
+    .query-list li.active {
+      background: var(--tag-bg);
+      color: #fff;
+      font-weight: 600;
+    }
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      background: var(--bg-primary);
+    }
+    header {
+      padding: 20px 32px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .q-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .section-badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .q-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .content-area {
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .sql-box {
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .sql-header {
+      background: #131b2c;
+      padding: 8px 16px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .copy-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      color: #fff;
+      border-color: var(--accent);
+    }
+    pre {
+      padding: 16px;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #38bdf8;
+      overflow-x: auto;
+    }
+    .table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+    .table-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .rows-count {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .table-scroll {
+      overflow-x: auto;
+      max-height: 480px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    th {
+      background: #111827;
+      color: var(--text-muted);
+      padding: 12px 18px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      white-space: nowrap;
+    }
+    td {
+      padding: 10px 18px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+    tr:hover td {
+      background: rgba(56, 189, 248, 0.05);
+    }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .pill-green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .pill-yellow { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .pill-blue { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+  </style>
+</head>
+<body>
+
+  <aside>
+    <div class="brand">
+      <h1>NaziharDB Output Viewer</h1>
+      <p>PostgreSQL Project Results (23 Queries)</p>
+    </div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search query or keyword...">
+    </div>
+    <ul class="query-list" id="queryList">
+      <!-- Generated via JS -->
+    </ul>
+  </aside>
+
+  <main>
+    <header>
+      <div class="header-top">
+        <h2 class="q-title" id="displayTitle">Select a Query</h2>
+        <span class="section-badge" id="displaySection">Section</span>
+      </div>
+      <p class="q-desc" id="displayDesc"></p>
+    </header>
+
+    <div class="content-area">
+      <div class="sql-box">
+        <div class="sql-header">
+          <span>PostgreSQL Query</span>
+          <button class="copy-btn" id="copyBtn" onclick="copySql()">Copy SQL</button>
+        </div>
+        <pre><code id="displaySql"></code></pre>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header">
+          <span>Query Execution Output</span>
+          <span class="rows-count" id="displayCount">0 rows</span>
+        </div>
+        <div class="table-scroll">
+          <table id="outputTable">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const departments = [
+      { dept_id: 1, dept_name: 'Information Technology', creation_date: '2015-01-15', dept_location: 'Dhaka' },
+      { dept_id: 2, dept_name: 'Human Resources', creation_date: '2016-03-20', dept_location: 'Dhaka' },
+      { dept_id: 3, dept_name: 'Finance', creation_date: '2017-02-10', dept_location: 'Chittagong' },
+      { dept_id: 4, dept_name: 'Marketing', creation_date: '2018-05-18', dept_location: 'Dhaka' },
+      { dept_id: 5, dept_name: 'Administration', creation_date: '2019-01-25', dept_location: 'Rajshahi' },
+      { dept_id: 6, dept_name: 'Research and Development', creation_date: '2020-04-12', dept_location: 'Dhaka' }
+    ];
+
+    const employees = [
+      { emp_id: 1,  emp_name: 'Abir Hasan',        designation: 'Software Engineer',         dateofbirth: '1992-05-14', salary: 65000.00, dept_id: 1 },
+      { emp_id: 2,  emp_name: 'Nusrat Jahan',      designation: 'Senior Software Engineer',  dateofbirth: '1989-08-22', salary: 85000.00, dept_id: 1 },
+      { emp_id: 3,  emp_name: 'Tanvir Ahmed',      designation: 'System Analyst',            dateofbirth: '1991-03-10', salary: 72000.00, dept_id: 1 },
+      { emp_id: 4,  emp_name: 'Sakib Khan',        designation: 'Database Administrator',    dateofbirth: '1988-01-15', salary: 78000.00, dept_id: 1 },
+      { emp_id: 5,  emp_name: 'Mim Akter',         designation: 'Software Engineer',         dateofbirth: '1995-04-20', salary: 55000.00, dept_id: 1 },
+      { emp_id: 6,  emp_name: 'Fahim Rahman',      designation: 'Network Engineer',          dateofbirth: '1993-09-19', salary: 60000.00, dept_id: 1 },
+      { emp_id: 7,  emp_name: 'Rafiul Islam',      designation: 'Junior Developer',          dateofbirth: '1998-03-22', salary: 42000.00, dept_id: 1 },
+      { emp_id: 8,  emp_name: 'Nusrat Sultana',    designation: 'HR Manager',                dateofbirth: '1987-06-12', salary: 75000.00, dept_id: 2 },
+      { emp_id: 9,  emp_name: 'Jannatul Ferdous',  designation: 'HR Officer',                dateofbirth: '1993-06-30', salary: 48000.00, dept_id: 2 },
+      { emp_id: 10, emp_name: 'Tania Akter',       designation: 'Recruitment Officer',       dateofbirth: '1995-10-17', salary: 45000.00, dept_id: 2 },
+      { emp_id: 11, emp_name: 'Shamim Ahmed',      designation: 'HR Executive',              dateofbirth: '1996-08-11', salary: 40000.00, dept_id: 2 },
+      { emp_id: 12, emp_name: 'Mehedi Hasan',      designation: 'Finance Manager',           dateofbirth: '1985-07-18', salary: 90000.00, dept_id: 3 },
+      { emp_id: 13, emp_name: 'Ayesha Rahman',     designation: 'Senior Accountant',         dateofbirth: '1989-02-25', salary: 70000.00, dept_id: 3 },
+      { emp_id: 14, emp_name: 'Rakib Hossain',     designation: 'Accountant',                dateofbirth: '1992-09-12', salary: 55000.00, dept_id: 3 },
+      { emp_id: 15, emp_name: 'Sumaiya Islam',     designation: 'Financial Analyst',         dateofbirth: '1994-07-04', salary: 62000.00, dept_id: 3 },
+      { emp_id: 16, emp_name: 'Imran Hossain',     designation: 'Junior Accountant',         dateofbirth: '1997-12-08', salary: 42000.00, dept_id: 3 },
+      { emp_id: 17, emp_name: 'Sadia Rahman',      designation: 'Marketing Manager',         dateofbirth: '1988-11-05', salary: 80000.00, dept_id: 4 },
+      { emp_id: 18, emp_name: 'Arif Rahman',       designation: 'Marketing Executive',       dateofbirth: '1992-05-23', salary: 52000.00, dept_id: 4 },
+      { emp_id: 19, emp_name: 'Rima Chowdhury',    designation: 'Digital Marketing Officer', dateofbirth: '1994-11-29', salary: 48000.00, dept_id: 4 },
+      { emp_id: 20, emp_name: 'Mahmudul Hasan',    designation: 'Sales Executive',           dateofbirth: '1991-03-16', salary: 45000.00, dept_id: 4 },
+      { emp_id: 21, emp_name: 'Farhana Akter',     designation: 'Admin Manager',             dateofbirth: '1986-02-14', salary: 78000.00, dept_id: 5 },
+      { emp_id: 22, emp_name: 'Morshed Alam',      designation: 'Administrative Officer',    dateofbirth: '1989-10-09', salary: 58000.00, dept_id: 5 },
+      { emp_id: 23, emp_name: 'Sabrina Akter',     designation: 'Office Executive',          dateofbirth: '1993-12-21', salary: 45000.00, dept_id: 5 },
+      { emp_id: 24, emp_name: 'Shakil Ahmed',      designation: 'Office Assistant',          dateofbirth: '1996-06-13', salary: 35000.00, dept_id: 5 },
+      { emp_id: 25, emp_name: 'Priya Das',         designation: 'Administrative Officer',    dateofbirth: '1991-08-06', salary: 55000.00, dept_id: 5 },
+      { emp_id: 26, emp_name: 'Afsana Yasmin',     designation: 'Research Manager',          dateofbirth: '1987-01-28', salary: 88000.00, dept_id: 6 },
+      { emp_id: 27, emp_name: 'Nayeem Hasan',      designation: 'Research Scientist',        dateofbirth: '1990-09-26', salary: 75000.00, dept_id: 6 },
+      { emp_id: 28, emp_name: 'Tasnim Jahan',      designation: 'Research Officer',          dateofbirth: '1993-05-31', salary: 60000.00, dept_id: 6 },
+      { emp_id: 29, emp_name: 'Sohanur Rahman',    designation: 'Data Scientist',            dateofbirth: '1992-11-18', salary: 82000.00, dept_id: 6 },
+      { emp_id: 30, emp_name: 'Sharmin Akter',     designation: 'Research Assistant',        dateofbirth: '1997-08-06', salary: 45000.00, dept_id: 6 }
+    ];
+
+    const projects = [
+      { project_id: 1,  project_name: 'Payroll Management System',       emp_id: 1,  project_manager: 2,  is_finished: 1 },
+      { project_id: 2,  project_name: 'Network Infrastructure Upgrade',  emp_id: 6,  project_manager: 2,  is_finished: 0 },
+      { project_id: 3,  project_name: 'Database Migration Project',      emp_id: 4,  project_manager: 3,  is_finished: 0 },
+      { project_id: 4,  project_name: 'Recruitment Management System',   emp_id: 9,  project_manager: 8,  is_finished: 1 },
+      { project_id: 5,  project_name: 'Employee Training Portal',        emp_id: 10, project_manager: 8,  is_finished: 0 },
+      { project_id: 6,  project_name: 'Financial Reporting System',      emp_id: 12, project_manager: 12, is_finished: 1 },
+      { project_id: 7,  project_name: 'Budget Management System',        emp_id: 13, project_manager: 12, is_finished: 0 },
+      { project_id: 8,  project_name: 'Digital Marketing Campaign',      emp_id: 17, project_manager: 16, is_finished: 1 },
+      { project_id: 9,  project_name: 'Company Website Redesign',        emp_id: 18, project_manager: 16, is_finished: 0 },
+      { project_id: 10, project_name: 'Office Automation System',        emp_id: 21, project_manager: 21, is_finished: 1 },
+      { project_id: 11, project_name: 'Research Data Management System', emp_id: 26, project_manager: 26, is_finished: 0 },
+      { project_id: 12, project_name: 'AI Research Project',             emp_id: 27, project_manager: 26, is_finished: 0 }
+    ];
+
+    const getDept = (id) => departments.find(d => d.dept_id === id);
+    const getEmp = (id) => employees.find(e => e.emp_id === id);
+
+    const queryData = [
+      {
+        num: 1,
+        section: "Basic SELECT & WHERE",
+        title: "Departments located in Dhaka, ordered by department name",
+        sql: "SELECT dept_id, dept_name, creation_date, dept_location\nFROM Departments\nWHERE dept_location = 'Dhaka'\nORDER BY dept_name ASC;",
+        data: () => departments.filter(d => d.dept_location === 'Dhaka').sort((a,b) => a.dept_name.localeCompare(b.dept_name))
+      },
+      {
+        num: 2,
+        section: "Basic SELECT & BETWEEN",
+        title: "Employees whose salary is between 50,000 and 80,000",
+        sql: "SELECT emp_name, designation, salary\nFROM Employees\nWHERE salary BETWEEN 50000 AND 80000\nORDER BY salary DESC;",
+        data: () => employees.filter(e => e.salary >= 50000 && e.salary <= 80000).map(e => ({ emp_name: e.emp_name, designation: e.designation, salary: e.salary.toFixed(2) })).sort((a,b) => b.salary - a.salary)
+      },
+      {
+        num: 3,
+        section: "Basic SELECT & LIKE",
+        title: "Employees whose name starts with 'A' or contains 'Rahman'",
+        sql: "SELECT emp_id, emp_name, designation, salary, dept_id\nFROM Employees\nWHERE emp_name LIKE 'A%'\n   OR emp_name LIKE '%Rahman%'\nORDER BY emp_id ASC;",
+        data: () => employees.filter(e => e.emp_name.startsWith('A') || e.emp_name.includes('Rahman')).sort((a,b) => a.emp_id - b.emp_id)
+      },
+      {
+        num: 4,
+        section: "Basic SELECT & OR",
+        title: "Projects that are either completed or assigned to employee ID 1",
+        sql: "SELECT project_id, project_name, emp_id, project_manager, is_finished\nFROM Projects\nWHERE is_finished = 1 OR emp_id = 1\nORDER BY project_id ASC;",
+        data: () => projects.filter(p => p.is_finished === 1 || p.emp_id === 1).sort((a,b) => a.project_id - b.project_id)
+      },
+      {
+        num: 5,
+        section: "ORDER BY & LIMIT",
+        title: "5 highest-paid employees",
+        sql: "SELECT emp_id, emp_name, designation, salary, dept_id\nFROM Employees\nORDER BY salary DESC\nLIMIT 5;",
+        data: () => [...employees].sort((a,b) => b.salary - a.salary).slice(0, 5)
+      },
+      {
+        num: 6,
+        section: "DISTINCT",
+        title: "All unique locations from the departments table",
+        sql: "SELECT DISTINCT dept_location\nFROM Departments\nORDER BY dept_location ASC;",
+        data: () => [...new Set(departments.map(d => d.dept_location))].sort().map(loc => ({ dept_location: loc }))
+      },
+      {
+        num: 7,
+        section: "ORDER BY & LIMIT",
+        title: "3 most recently created departments",
+        sql: "SELECT dept_id, dept_name, creation_date, dept_location\nFROM Departments\nORDER BY creation_date DESC\nLIMIT 3;",
+        data: () => [...departments].sort((a,b) => b.creation_date.localeCompare(a.creation_date)).slice(0, 3)
+      },
+      {
+        num: 8,
+        section: "Aggregate Functions",
+        title: "Total employees, total salary, average salary, highest & lowest salary",
+        sql: "SELECT \n    COUNT(*) AS total_employees,\n    SUM(salary) AS total_salary,\n    ROUND(AVG(salary), 2) AS average_salary,\n    MAX(salary) AS highest_salary,\n    MIN(salary) AS lowest_salary\nFROM Employees;",
+        data: () => {
+          const tot = employees.reduce((s, e) => s + e.salary, 0);
+          return [{
+            total_employees: employees.length,
+            total_salary: tot.toFixed(2),
+            average_salary: (tot / employees.length).toFixed(2),
+            highest_salary: Math.max(...employees.map(e => e.salary)).toFixed(2),
+            lowest_salary: Math.min(...employees.map(e => e.salary)).toFixed(2)
+          }];
+        }
+      },
+      {
+        num: 9,
+        section: "Aggregate Functions",
+        title: "Total number of completed and running projects separately",
+        sql: "SELECT \n    CASE \n        WHEN is_finished = 1 THEN 'Completed'\n        WHEN is_finished = 0 THEN 'Running'\n    END AS project_status,\n    COUNT(*) AS total_projects\nFROM Projects\nGROUP BY is_finished\nORDER BY is_finished DESC;",
+        data: () => [
+          { project_status: 'Completed', total_projects: projects.filter(p => p.is_finished === 1).length },
+          { project_status: 'Running', total_projects: projects.filter(p => p.is_finished === 0).length }
+        ]
+      },
+      {
+        num: 10,
+        section: "GROUP BY & Aggregation",
+        title: "Each department's name, number of employees, and average salary",
+        sql: "SELECT \n    d.dept_name,\n    COUNT(e.emp_id) AS number_of_employees,\n    ROUND(AVG(e.salary), 2) AS average_salary\nFROM Departments d\nJOIN Employees e ON d.dept_id = e.dept_id\nGROUP BY d.dept_id, d.dept_name\nORDER BY d.dept_id ASC;",
+        data: () => departments.map(d => {
+          const emps = employees.filter(e => e.dept_id === d.dept_id);
+          const tot = emps.reduce((s, e) => s + e.salary, 0);
+          return {
+            dept_name: d.dept_name,
+            number_of_employees: emps.length,
+            average_salary: (tot / emps.length).toFixed(2)
+          };
+        })
+      },
+      {
+        num: 11,
+        section: "GROUP BY & HAVING",
+        title: "Departments having more than 4 employees",
+        sql: "SELECT \n    d.dept_name,\n    COUNT(e.emp_id) AS number_of_employees\nFROM Departments d\nJOIN Employees e ON d.dept_id = e.dept_id\nGROUP BY d.dept_id, d.dept_name\nHAVING COUNT(e.emp_id) > 4\nORDER BY number_of_employees DESC;",
+        data: () => departments.map(d => ({
+          dept_name: d.dept_name,
+          number_of_employees: employees.filter(e => e.dept_id === d.dept_id).length
+        })).filter(d => d.number_of_employees > 4).sort((a,b) => b.number_of_employees - a.number_of_employees)
+      },
+      {
+        num: 12,
+        section: "GROUP BY & HAVING",
+        title: "Departments whose total salary is greater than 300,000",
+        sql: "SELECT \n    d.dept_name,\n    SUM(e.salary) AS total_salary\nFROM Departments d\nJOIN Employees e ON d.dept_id = e.dept_id\nGROUP BY d.dept_id, d.dept_name\nHAVING SUM(e.salary) > 300000\nORDER BY total_salary DESC;",
+        data: () => departments.map(d => ({
+          dept_name: d.dept_name,
+          total_salary: employees.filter(e => e.dept_id === d.dept_id).reduce((s, e) => s + e.salary, 0).toFixed(2)
+        })).filter(d => Number(d.total_salary) > 300000).sort((a,b) => b.total_salary - a.total_salary)
+      },
+      {
+        num: 13,
+        section: "GROUP BY & HAVING",
+        title: "Project managers managing more than 1 project",
+        sql: "SELECT \n    project_manager AS manager_emp_id,\n    COUNT(*) AS total_projects_managed\nFROM Projects\nGROUP BY project_manager\nHAVING COUNT(*) > 1\nORDER BY total_projects_managed DESC, project_manager ASC;",
+        data: () => {
+          const m = {};
+          projects.forEach(p => m[p.project_manager] = (m[p.project_manager] || 0) + 1);
+          return Object.entries(m)
+            .filter(([_, c]) => c > 1)
+            .map(([mgr, c]) => ({ manager_emp_id: Number(mgr), total_projects_managed: c }))
+            .sort((a,b) => b.total_projects_managed - a.total_projects_managed || a.manager_emp_id - b.manager_emp_id);
+        }
+      },
+      {
+        num: 14,
+        section: "INNER JOIN",
+        title: "Employee name, designation, salary, and department name",
+        sql: "SELECT \n    e.emp_name,\n    e.designation,\n    e.salary,\n    d.dept_name\nFROM Employees e\nINNER JOIN Departments d ON e.dept_id = d.dept_id\nORDER BY e.emp_id ASC;",
+        data: () => employees.map(e => ({
+          emp_name: e.emp_name,
+          designation: e.designation,
+          salary: e.salary.toFixed(2),
+          dept_name: getDept(e.dept_id)?.dept_name
+        }))
+      },
+      {
+        num: 15,
+        section: "INNER JOIN",
+        title: "Project name, assigned employee name, and department name",
+        sql: "SELECT \n    p.project_name,\n    e.emp_name AS assigned_employee_name,\n    d.dept_name\nFROM Projects p\nINNER JOIN Employees e ON p.emp_id = e.emp_id\nINNER JOIN Departments d ON e.dept_id = d.dept_id\nORDER BY p.project_id ASC;",
+        data: () => projects.map(p => {
+          const emp = getEmp(p.emp_id);
+          return {
+            project_name: p.project_name,
+            assigned_employee_name: emp?.emp_name,
+            dept_name: getDept(emp?.dept_id)?.dept_name
+          };
+        })
+      },
+      {
+        num: 16,
+        section: "INNER JOIN & CASE",
+        title: "Project name, assigned employee, salary, department, and project status",
+        sql: "SELECT \n    p.project_name,\n    e.emp_name AS assigned_employee_name,\n    e.salary AS employee_salary,\n    d.dept_name,\n    CASE \n        WHEN p.is_finished = 1 THEN 'Completed'\n        WHEN p.is_finished = 0 THEN 'Running'\n    END AS project_status\nFROM Projects p\nINNER JOIN Employees e ON p.emp_id = e.emp_id\nINNER JOIN Departments d ON e.dept_id = d.dept_id\nORDER BY p.project_id ASC;",
+        data: () => projects.map(p => {
+          const emp = getEmp(p.emp_id);
+          return {
+            project_name: p.project_name,
+            assigned_employee_name: emp?.emp_name,
+            employee_salary: emp?.salary.toFixed(2),
+            dept_name: getDept(emp?.dept_id)?.dept_name,
+            project_status: p.is_finished === 1 ? 'Completed' : 'Running'
+          };
+        })
+      },
+      {
+        num: 17,
+        section: "LEFT JOIN",
+        title: "All employees and their project names (including unassigned)",
+        sql: "SELECT \n    e.emp_name,\n    p.project_name\nFROM Employees e\nLEFT JOIN Projects p ON e.emp_id = p.emp_id\nORDER BY e.emp_id ASC;",
+        data: () => employees.map(e => {
+          const p = projects.find(proj => proj.emp_id === e.emp_id);
+          return { emp_name: e.emp_name, project_name: p ? p.project_name : 'NULL (Unassigned)' };
+        })
+      },
+      {
+        num: 18,
+        section: "LEFT JOIN & Aggregation",
+        title: "All departments and number of employees in each",
+        sql: "SELECT \n    d.dept_name,\n    COUNT(e.emp_id) AS number_of_employees\nFROM Departments d\nLEFT JOIN Employees e ON d.dept_id = e.dept_id\nGROUP BY d.dept_id, d.dept_name\nORDER BY d.dept_id ASC;",
+        data: () => departments.map(d => ({
+          dept_name: d.dept_name,
+          number_of_employees: employees.filter(e => e.dept_id === d.dept_id).length
+        }))
+      },
+      {
+        num: 19,
+        section: "LEFT JOIN & IS NULL",
+        title: "Employees who are not assigned to any project",
+        sql: "SELECT \n    e.emp_id,\n    e.emp_name,\n    e.designation,\n    e.salary\nFROM Employees e\nLEFT JOIN Projects p ON e.emp_id = p.emp_id\nWHERE p.project_id IS NULL\nORDER BY e.emp_id ASC;",
+        data: () => employees.filter(e => !projects.some(p => p.emp_id === e.emp_id)).map(e => ({
+          emp_id: e.emp_id,
+          emp_name: e.emp_name,
+          designation: e.designation,
+          salary: e.salary.toFixed(2)
+        }))
+      },
+      {
+        num: 20,
+        section: "CASE Statement",
+        title: "Employee salary category (>=80k High, >=60k Medium, else Low)",
+        sql: "SELECT \n    emp_name,\n    salary,\n    CASE \n        WHEN salary >= 80000 THEN 'High'\n        WHEN salary >= 60000 THEN 'Medium'\n        ELSE 'Low'\n    END AS salary_category\nFROM Employees\nORDER BY salary DESC, emp_name ASC;",
+        data: () => employees.map(e => ({
+          emp_name: e.emp_name,
+          salary: e.salary.toFixed(2),
+          salary_category: e.salary >= 80000 ? 'High' : e.salary >= 60000 ? 'Medium' : 'Low'
+        })).sort((a,b) => b.salary - a.salary)
+      },
+      {
+        num: 21,
+        section: "CASE Statement",
+        title: "Project name and project status (1=Completed, 0=Running)",
+        sql: "SELECT \n    project_name,\n    CASE \n        WHEN is_finished = 1 THEN 'Completed'\n        WHEN is_finished = 0 THEN 'Running'\n        ELSE 'Unknown'\n    END AS project_status\nFROM Projects\nORDER BY project_id ASC;",
+        data: () => projects.map(p => ({
+          project_name: p.project_name,
+          project_status: p.is_finished === 1 ? 'Completed' : 'Running'
+        }))
+      },
+      {
+        num: 22,
+        section: "Subqueries",
+        title: "Employees whose salary is greater than the company average",
+        sql: "SELECT \n    emp_id,\n    emp_name,\n    designation,\n    salary\nFROM Employees\nWHERE salary > (\n    SELECT AVG(salary) \n    FROM Employees\n)\nORDER BY salary DESC;",
+        data: () => {
+          const avg = employees.reduce((s, e) => s + e.salary, 0) / employees.length;
+          return employees.filter(e => e.salary > avg).map(e => ({
+            emp_id: e.emp_id,
+            emp_name: e.emp_name,
+            designation: e.designation,
+            salary: e.salary.toFixed(2)
+          })).sort((a,b) => b.salary - a.salary);
+        }
+      },
+      {
+        num: 23,
+        section: "Subqueries",
+        title: "Highest-paid employee from each department",
+        sql: "SELECT \n    e.emp_name,\n    e.salary,\n    d.dept_name\nFROM Employees e\nJOIN Departments d ON e.dept_id = d.dept_id\nWHERE (e.dept_id, e.salary) IN (\n    SELECT dept_id, MAX(salary)\n    FROM Employees\n    GROUP BY dept_id\n)\nORDER BY e.salary DESC;",
+        data: () => departments.map(d => {
+          const emps = employees.filter(e => e.dept_id === d.dept_id);
+          const top = emps.reduce((max, cur) => cur.salary > max.salary ? cur : max, emps[0]);
+          return { emp_name: top.emp_name, salary: top.salary.toFixed(2), dept_name: d.dept_name };
+        }).sort((a,b) => b.salary - a.salary)
+      }
+    ];
+
+    let currentQ = 1;
+
+    function renderList(filter = '') {
+      const list = document.getElementById('queryList');
+      list.innerHTML = '';
+      queryData.filter(q => 
+        q.title.toLowerCase().includes(filter.toLowerCase()) || 
+        q.section.toLowerCase().includes(filter.toLowerCase()) ||
+        `q${q.num}`.includes(filter.toLowerCase())
+      ).forEach(q => {
+        const li = document.createElement('li');
+        li.className = q.num === currentQ ? 'active' : '';
+        li.innerHTML = `<span class="badge">Q${q.num}</span> <span>${q.title}</span>`;
+        li.onclick = () => selectQuery(q.num);
+        list.appendChild(li);
+      });
+    }
+
+    function selectQuery(num) {
+      currentQ = num;
+      renderList(document.getElementById('searchInput').value);
+      const q = queryData.find(item => item.num === num);
+      if (!q) return;
+
+      document.getElementById('displayTitle').innerText = `Query ${q.num}: ${q.title}`;
+      document.getElementById('displaySection').innerText = q.section;
+      document.getElementById('displayDesc').innerText = `Demonstrates: ${q.section}`;
+      document.getElementById('displaySql').innerText = q.sql;
+
+      const rows = q.data();
+      document.getElementById('displayCount').innerText = `${rows.length} row${rows.length === 1 ? '' : 's'} returned`;
+
+      const thead = document.getElementById('tableHead');
+      const tbody = document.getElementById('tableBody');
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
+
+      if (rows.length === 0) return;
+
+      const cols = Object.keys(rows[0]);
+      const trHead = document.createElement('tr');
+      cols.forEach(col => {
+        const th = document.createElement('th');
+        th.innerText = col.replace(/_/g, ' ').toUpperCase();
+        trHead.appendChild(th);
+      });
+      thead.appendChild(trHead);
+
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        cols.forEach(col => {
+          const td = document.createElement('td');
+          let val = r[col];
+          if (val === 'Completed') td.innerHTML = `<span class="pill pill-green">${val}</span>`;
+          else if (val === 'Running') td.innerHTML = `<span class="pill pill-yellow">${val}</span>`;
+          else if (val === 'High') td.innerHTML = `<span class="pill pill-green">${val}</span>`;
+          else if (val === 'Medium') td.innerHTML = `<span class="pill pill-blue">${val}</span>`;
+          else if (val === 'Low') td.innerHTML = `<span class="pill pill-yellow">${val}</span>`;
+          else td.innerText = val !== null ? val : 'NULL';
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function copySql() {
+      const q = queryData.find(item => item.num === currentQ);
+      navigator.clipboard.writeText(q.sql).then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.innerText = 'Copied!';
+        setTimeout(() => btn.innerText = 'Copy SQL', 1500);
+      });
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      renderList(e.target.value);
+    });
+
+    // Initialize
+    selectQuery(1);
+  </script>
+</body>
+</html>
